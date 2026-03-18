@@ -1,0 +1,863 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>EMS – Employee Management System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0b0e;
+    --surface: #111318;
+    --surface2: #181c24;
+    --border: #1f2433;
+    --accent: #4f9eff;
+    --accent2: #7b61ff;
+    --accent3: #00d4aa;
+    --danger: #ff4f6a;
+    --warning: #ffb347;
+    --text: #e8eaf2;
+    --muted: #6b7294;
+    --radius: 12px;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    font-size: 14px;
+  }
+  h1,h2,h3 { font-family: 'Syne', sans-serif; }
+  code, .mono { font-family: 'DM Mono', monospace; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* Layout */
+  .app { display: flex; min-height: 100vh; }
+
+  /* Sidebar */
+  .sidebar {
+    width: 240px; min-height: 100vh; background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    padding: 24px 0; position: fixed; top: 0; left: 0; bottom: 0; z-index: 50;
+    transition: transform 0.3s;
+  }
+  .sidebar-logo {
+    padding: 0 20px 24px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 16px;
+  }
+  .sidebar-logo h1 { font-size: 18px; font-weight: 800; letter-spacing: -0.5px; }
+  .sidebar-logo span { color: var(--accent); }
+  .sidebar-logo p { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 20px; cursor: pointer;
+    color: var(--muted); font-weight: 500; font-size: 13.5px;
+    transition: all 0.15s; border-left: 2px solid transparent;
+    user-select: none;
+  }
+  .nav-item:hover { color: var(--text); background: rgba(79,158,255,0.06); }
+  .nav-item.active { color: var(--accent); border-left-color: var(--accent); background: rgba(79,158,255,0.08); }
+  .nav-icon { font-size: 16px; width: 20px; text-align: center; }
+  .sidebar-footer {
+    margin-top: auto; padding: 16px 20px;
+    border-top: 1px solid var(--border);
+  }
+  .user-badge {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--surface2); border-radius: 8px; padding: 10px 12px;
+  }
+  .avatar {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700; color: white;
+    font-family: 'Syne', sans-serif;
+  }
+  .user-info p { font-size: 12px; font-weight: 600; }
+  .user-info span { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+  .logout-btn {
+    margin-top: 8px; width: 100%; padding: 8px;
+    background: none; border: 1px solid var(--border); border-radius: 6px;
+    color: var(--muted); cursor: pointer; font-size: 12px; font-family: 'DM Sans', sans-serif;
+    transition: all 0.15s;
+  }
+  .logout-btn:hover { border-color: var(--danger); color: var(--danger); }
+
+  /* Main */
+  .main { margin-left: 240px; flex: 1; display: flex; flex-direction: column; }
+  .topbar {
+    height: 60px; background: var(--surface); border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; padding: 0 28px; gap: 12px;
+    position: sticky; top: 0; z-index: 40;
+  }
+  .topbar-title { font-family: 'Syne', sans-serif; font-size: 16px; font-weight: 700; }
+  .topbar-breadcrumb { color: var(--muted); font-size: 13px; }
+  .topbar-actions { margin-left: auto; display: flex; gap: 10px; align-items: center; }
+  .page { padding: 28px; flex: 1; }
+
+  /* Cards */
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 20px;
+  }
+  .card-title { font-size: 13px; color: var(--muted); font-weight: 500; margin-bottom: 6px; }
+  .card-value { font-family: 'Syne', sans-serif; font-size: 28px; font-weight: 800; }
+  .card-sub { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+  /* Grid */
+  .grid { display: grid; gap: 16px; }
+  .grid-4 { grid-template-columns: repeat(4, 1fr); }
+  .grid-2 { grid-template-columns: repeat(2, 1fr); }
+  .grid-3 { grid-template-columns: repeat(3, 1fr); }
+
+  /* Buttons */
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 16px; border-radius: 8px; font-family: 'DM Sans', sans-serif;
+    font-size: 13px; font-weight: 500; cursor: pointer; border: none;
+    transition: all 0.15s; text-decoration: none;
+  }
+  .btn-primary { background: var(--accent); color: white; }
+  .btn-primary:hover { background: #3b8de8; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(79,158,255,0.3); }
+  .btn-ghost { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+  .btn-ghost:hover { color: var(--text); border-color: var(--muted); }
+  .btn-danger { background: transparent; color: var(--danger); border: 1px solid rgba(255,79,106,0.3); }
+  .btn-danger:hover { background: rgba(255,79,106,0.1); border-color: var(--danger); }
+  .btn-sm { padding: 5px 10px; font-size: 12px; border-radius: 6px; }
+
+  /* Inputs */
+  .input-group { display: flex; flex-direction: column; gap: 4px; }
+  .input-group label { font-size: 12px; color: var(--muted); font-weight: 500; }
+  input, select, textarea {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 9px 12px; color: var(--text);
+    font-family: 'DM Sans', sans-serif; font-size: 13.5px; width: 100%;
+    transition: border-color 0.15s;
+  }
+  input:focus, select:focus, textarea:focus {
+    outline: none; border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(79,158,255,0.1);
+  }
+  input::placeholder { color: var(--muted); }
+  select option { background: var(--surface2); }
+
+  /* Table */
+  .table-wrap { overflow-x: auto; border-radius: var(--radius); border: 1px solid var(--border); }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead tr { background: var(--surface2); }
+  th { padding: 11px 14px; text-align: left; color: var(--muted); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  td { padding: 12px 14px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover { background: rgba(255,255,255,0.02); }
+
+  /* Badge */
+  .badge {
+    display: inline-flex; align-items: center; padding: 2px 9px; border-radius: 999px;
+    font-size: 11px; font-weight: 600; font-family: 'DM Mono', monospace;
+    letter-spacing: 0.2px;
+  }
+  .badge-blue { background: rgba(79,158,255,0.15); color: var(--accent); }
+  .badge-green { background: rgba(0,212,170,0.15); color: var(--accent3); }
+  .badge-yellow { background: rgba(255,179,71,0.15); color: var(--warning); }
+  .badge-red { background: rgba(255,79,106,0.15); color: var(--danger); }
+  .badge-purple { background: rgba(123,97,255,0.15); color: var(--accent2); }
+
+  /* Score bar */
+  .score-bar { display: flex; align-items: center; gap: 8px; }
+  .bar-bg { flex: 1; height: 4px; background: var(--surface2); border-radius: 2px; }
+  .bar-fill { height: 100%; border-radius: 2px; transition: width 0.5s; }
+  .score-num { font-family: 'DM Mono', monospace; font-size: 12px; min-width: 28px; }
+
+  /* Login Page */
+  .login-page {
+    min-height: 100vh; display: flex; align-items: center; justify-content: center;
+    background: var(--bg); position: relative; overflow: hidden;
+  }
+  .login-bg {
+    position: absolute; inset: 0; pointer-events: none;
+    background:
+      radial-gradient(ellipse 600px 400px at 20% 50%, rgba(79,158,255,0.06) 0%, transparent 60%),
+      radial-gradient(ellipse 500px 300px at 80% 30%, rgba(123,97,255,0.05) 0%, transparent 60%);
+  }
+  .login-grid-lines {
+    position: absolute; inset: 0; pointer-events: none;
+    background-image: linear-gradient(var(--border) 1px, transparent 1px),
+      linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size: 40px 40px; opacity: 0.3;
+    mask-image: radial-gradient(ellipse at center, black 0%, transparent 70%);
+  }
+  .login-card {
+    position: relative; width: 400px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 16px; padding: 36px; z-index: 1;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.5);
+  }
+  .login-logo { text-align: center; margin-bottom: 28px; }
+  .login-logo .logo-icon {
+    width: 52px; height: 52px; margin: 0 auto 12px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 14px; display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+  }
+  .login-logo h1 { font-size: 22px; font-weight: 800; }
+  .login-logo p { font-size: 13px; color: var(--muted); margin-top: 4px; }
+  .form-stack { display: flex; flex-direction: column; gap: 14px; }
+  .form-grid { display: grid; gap: 14px; grid-template-columns: 1fr 1fr; }
+
+  /* Modal */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+    display: flex; align-items: center; justify-content: center; z-index: 100;
+    backdrop-filter: blur(4px);
+  }
+  .modal {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 16px; padding: 28px; width: 600px; max-width: 95vw;
+    max-height: 90vh; overflow-y: auto;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.6);
+    animation: slideUp 0.2s ease;
+  }
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 22px; }
+  .modal-header h2 { font-size: 17px; }
+  .modal-close { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 20px; padding: 4px; border-radius: 4px; }
+  .modal-close:hover { color: var(--text); background: var(--surface2); }
+  .modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 22px; }
+
+  /* Alerts */
+  .alert {
+    padding: 10px 14px; border-radius: 8px; font-size: 13px;
+    margin-bottom: 14px;
+  }
+  .alert-error { background: rgba(255,79,106,0.1); border: 1px solid rgba(255,79,106,0.3); color: #ff8096; }
+  .alert-success { background: rgba(0,212,170,0.1); border: 1px solid rgba(0,212,170,0.3); color: var(--accent3); }
+
+  /* Pagination */
+  .pagination { display: flex; align-items: center; gap: 6px; justify-content: flex-end; margin-top: 16px; }
+  .page-btn {
+    width: 32px; height: 32px; border-radius: 6px; border: 1px solid var(--border);
+    background: none; color: var(--muted); cursor: pointer; font-size: 13px;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s; font-family: 'DM Mono', monospace;
+  }
+  .page-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .page-btn.active { background: var(--accent); border-color: var(--accent); color: white; }
+  .page-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+  /* Dept chart */
+  .dept-bar { display: flex; flex-direction: column; gap: 8px; }
+  .dept-row { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+  .dept-name { min-width: 90px; color: var(--muted); }
+  .dept-track { flex: 1; height: 6px; background: var(--surface2); border-radius: 3px; overflow: hidden; }
+  .dept-fill { height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--accent), var(--accent2)); transition: width 0.7s ease; }
+  .dept-count { min-width: 24px; text-align: right; font-family: 'DM Mono', monospace; }
+
+  /* Loading */
+  .spinner {
+    width: 32px; height: 32px; border: 3px solid var(--border);
+    border-top-color: var(--accent); border-radius: 50%;
+    animation: spin 0.7s linear infinite; margin: 40px auto;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .empty-state {
+    text-align: center; padding: 48px 24px; color: var(--muted);
+  }
+  .empty-state .icon { font-size: 40px; margin-bottom: 12px; }
+  .empty-state p { font-size: 14px; }
+
+  /* Search row */
+  .toolbar { display: flex; gap: 10px; align-items: center; margin-bottom: 16px; flex-wrap: wrap; }
+  .search-wrap { position: relative; flex: 1; min-width: 200px; }
+  .search-wrap input { padding-left: 36px; }
+  .search-icon { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 14px; }
+
+  @media (max-width: 900px) {
+    .grid-4 { grid-template-columns: repeat(2,1fr); }
+    .grid-3 { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 640px) {
+    .sidebar { transform: translateX(-100%); }
+    .main { margin-left: 0; }
+    .grid-4, .grid-3, .grid-2 { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script>
+const { useState, useEffect, useCallback, createContext, useContext } = React;
+
+const API = 'http://localhost:8000';
+
+// ── API helpers ─────────────────────────────────────────────────────────────
+const api = {
+  token: () => localStorage.getItem('ems_token'),
+  headers: () => ({
+    'Content-Type': 'application/json',
+    ...(api.token() ? { Authorization: `Bearer ${api.token()}` } : {}),
+  }),
+  async request(path, opts = {}) {
+    const res = await fetch(API + path, { headers: api.headers(), ...opts });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: 'Request failed' }));
+      throw new Error(err.detail || 'Request failed');
+    }
+    return res.json();
+  },
+  get: (path) => api.request(path),
+  post: (path, body) => api.request(path, { method: 'POST', body: JSON.stringify(body) }),
+  put: (path, body) => api.request(path, { method: 'PUT', body: JSON.stringify(body) }),
+  delete: (path) => api.request(path, { method: 'DELETE' }),
+};
+
+// ── Auth Context ─────────────────────────────────────────────────────────────
+const AuthCtx = createContext(null);
+function AuthProvider({ children }) {
+  const [user, setUser] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('ems_user')); } catch { return null; }
+  });
+
+  const login = async (email, password) => {
+    const data = await api.post('/api/auth/login', { email, password });
+    localStorage.setItem('ems_token', data.access_token);
+    localStorage.setItem('ems_user', JSON.stringify(data.user));
+    setUser(data.user);
+  };
+
+  const logout = () => {
+    localStorage.removeItem('ems_token');
+    localStorage.removeItem('ems_user');
+    setUser(null);
+  };
+
+  return React.createElement(AuthCtx.Provider, { value: { user, login, logout } }, children);
+}
+
+// ── Utility components ───────────────────────────────────────────────────────
+function Spinner() {
+  return React.createElement('div', { className: 'spinner' });
+}
+
+function Alert({ type = 'error', msg }) {
+  if (!msg) return null;
+  return React.createElement('div', { className: `alert alert-${type}` }, msg);
+}
+
+function ScoreBar({ score }) {
+  const pct = (score / 10) * 100;
+  const color = score >= 8 ? '#00d4aa' : score >= 5 ? '#4f9eff' : '#ff4f6a';
+  return React.createElement('div', { className: 'score-bar' },
+    React.createElement('div', { className: 'bar-bg' },
+      React.createElement('div', { className: 'bar-fill', style: { width: `${pct}%`, background: color } })
+    ),
+    React.createElement('span', { className: 'score-num', style: { color } }, score.toFixed(1))
+  );
+}
+
+function DeptBadge({ dept }) {
+  const colors = {
+    Engineering: 'badge-blue', Marketing: 'badge-purple', Sales: 'badge-yellow',
+    HR: 'badge-green', Finance: 'badge-green', Operations: 'badge-yellow',
+    Design: 'badge-purple', Legal: 'badge-red', Product: 'badge-blue',
+  };
+  return React.createElement('span', { className: `badge ${colors[dept] || 'badge-blue'}` }, dept);
+}
+
+function RoleBadge({ role }) {
+  const colors = { admin: 'badge-red', hr: 'badge-green', manager: 'badge-blue' };
+  return React.createElement('span', { className: `badge ${colors[role] || 'badge-blue'}` }, role);
+}
+
+// ── Login Page ───────────────────────────────────────────────────────────────
+function LoginPage() {
+  const { login } = useContext(AuthCtx);
+  const [form, setForm] = useState({ email: '', password: '' });
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const submit = async (e) => {
+    e.preventDefault();
+    setLoading(true); setError('');
+    try { await login(form.email, form.password); }
+    catch (err) { setError(err.message); }
+    finally { setLoading(false); }
+  };
+
+  const fill = (email, pass) => setForm({ email, password: pass });
+
+  return React.createElement('div', { className: 'login-page' },
+    React.createElement('div', { className: 'login-bg' }),
+    React.createElement('div', { className: 'login-grid-lines' }),
+    React.createElement('div', { className: 'login-card' },
+      React.createElement('div', { className: 'login-logo' },
+        React.createElement('div', { className: 'logo-icon' }, '🏢'),
+        React.createElement('h1', null, 'EMS Portal'),
+        React.createElement('p', null, 'Employee Management System'),
+      ),
+      React.createElement(Alert, { msg: error }),
+      React.createElement('form', { onSubmit: submit },
+        React.createElement('div', { className: 'form-stack' },
+          React.createElement('div', { className: 'input-group' },
+            React.createElement('label', null, 'Email Address'),
+            React.createElement('input', {
+              type: 'email', placeholder: 'admin@company.com', required: true,
+              value: form.email, onChange: e => setForm(p => ({ ...p, email: e.target.value }))
+            })
+          ),
+          React.createElement('div', { className: 'input-group' },
+            React.createElement('label', null, 'Password'),
+            React.createElement('input', {
+              type: 'password', placeholder: '••••••••', required: true,
+              value: form.password, onChange: e => setForm(p => ({ ...p, password: e.target.value }))
+            })
+          ),
+          React.createElement('button', {
+            type: 'submit', className: 'btn btn-primary', disabled: loading,
+            style: { width: '100%', justifyContent: 'center', padding: '11px' }
+          }, loading ? '🔄 Signing in...' : '→ Sign In'),
+        )
+      ),
+      React.createElement('div', { style: { marginTop: 20, borderTop: '1px solid var(--border)', paddingTop: 16 } },
+        React.createElement('p', { style: { fontSize: 11, color: 'var(--muted)', marginBottom: 10, textTransform: 'uppercase', letterSpacing: 1 } }, 'Quick fill demo credentials'),
+        React.createElement('div', { style: { display: 'flex', gap: 6, flexWrap: 'wrap' } },
+          [['Admin','admin@company.com','Admin@1234'],['HR','hr@company.com','Hr@12345'],['Manager','manager@company.com','Manager@1']].map(([r,e,p]) =>
+            React.createElement('button', { key: r, type:'button', className: 'btn btn-ghost btn-sm', onClick: () => fill(e,p) }, r)
+          )
+        )
+      )
+    )
+  );
+}
+
+// ── Employee Form Modal ──────────────────────────────────────────────────────
+const DEPARTMENTS = ['Engineering','Marketing','Sales','HR','Finance','Operations','Design','Legal','Product'];
+
+function EmployeeModal({ employee, onClose, onSaved }) {
+  const isEdit = !!employee;
+  const [form, setForm] = useState({
+    full_name: employee?.full_name || '',
+    email: employee?.email || '',
+    phone: employee?.phone || '',
+    department: employee?.department || 'Engineering',
+    designation: employee?.designation || '',
+    salary: employee?.salary || '',
+    date_of_joining: employee?.date_of_joining || new Date().toISOString().split('T')[0],
+    performance_score: employee?.performance_score ?? 5,
+  });
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
+
+  const submit = async (e) => {
+    e.preventDefault();
+    setLoading(true); setError('');
+    try {
+      const body = { ...form, salary: parseFloat(form.salary), performance_score: parseFloat(form.performance_score) };
+      if (isEdit) await api.put(`/api/employees/${employee.id}`, body);
+      else await api.post('/api/employees', body);
+      onSaved();
+    } catch (err) { setError(err.message); }
+    finally { setLoading(false); }
+  };
+
+  const F = (label, key, type = 'text', extra = {}) =>
+    React.createElement('div', { className: 'input-group' },
+      React.createElement('label', null, label),
+      React.createElement('input', {
+        type, required: true, value: form[key],
+        onChange: e => set(key, e.target.value), ...extra
+      })
+    );
+
+  return React.createElement('div', { className: 'modal-overlay', onClick: e => e.target === e.currentTarget && onClose() },
+    React.createElement('div', { className: 'modal' },
+      React.createElement('div', { className: 'modal-header' },
+        React.createElement('h2', null, isEdit ? '✏️ Edit Employee' : '➕ Add Employee'),
+        React.createElement('button', { className: 'modal-close', onClick: onClose }, '✕')
+      ),
+      React.createElement(Alert, { msg: error }),
+      React.createElement('form', { onSubmit: submit },
+        React.createElement('div', { className: 'form-grid' },
+          F('Full Name', 'full_name', 'text', { placeholder: 'Jane Doe' }),
+          F('Email', 'email', 'email', { placeholder: 'jane@company.com' }),
+          F('Phone', 'phone', 'tel', { placeholder: '+1-555-0000', required: false }),
+          React.createElement('div', { className: 'input-group' },
+            React.createElement('label', null, 'Department'),
+            React.createElement('select', { value: form.department, onChange: e => set('department', e.target.value) },
+              DEPARTMENTS.map(d => React.createElement('option', { key: d, value: d }, d))
+            )
+          ),
+          F('Designation', 'designation', 'text', { placeholder: 'Software Engineer' }),
+          F('Salary ($)', 'salary', 'number', { placeholder: '75000', min: 1 }),
+          F('Date of Joining', 'date_of_joining', 'date'),
+          React.createElement('div', { className: 'input-group' },
+            React.createElement('label', null, `Performance Score: ${parseFloat(form.performance_score).toFixed(1)}`),
+            React.createElement('input', {
+              type: 'range', min: 0, max: 10, step: 0.1,
+              value: form.performance_score,
+              onChange: e => set('performance_score', e.target.value),
+              style: { padding: 0, background: 'none', border: 'none', cursor: 'pointer' }
+            })
+          )
+        ),
+        React.createElement('div', { className: 'modal-footer' },
+          React.createElement('button', { type: 'button', className: 'btn btn-ghost', onClick: onClose }, 'Cancel'),
+          React.createElement('button', { type: 'submit', className: 'btn btn-primary', disabled: loading },
+            loading ? '⏳ Saving...' : (isEdit ? '✓ Update' : '✓ Create Employee')
+          )
+        )
+      )
+    )
+  );
+}
+
+// ── Employee Detail Modal ─────────────────────────────────────────────────────
+function EmployeeDetail({ emp, onClose }) {
+  const row = (label, val) => React.createElement('div', { style: { display:'flex', gap:12, padding:'10px 0', borderBottom:'1px solid var(--border)' } },
+    React.createElement('span', { style: { width:140, color:'var(--muted)', fontSize:12, flexShrink:0 } }, label),
+    React.createElement('span', { style: { fontWeight:500 } }, val || '—')
+  );
+
+  return React.createElement('div', { className: 'modal-overlay', onClick: e => e.target === e.currentTarget && onClose() },
+    React.createElement('div', { className: 'modal' },
+      React.createElement('div', { className: 'modal-header' },
+        React.createElement('div', null,
+          React.createElement('h2', null, emp.full_name),
+          React.createElement('span', { style: { fontSize:12, color:'var(--muted)' } }, emp.employee_id)
+        ),
+        React.createElement('button', { className: 'modal-close', onClick: onClose }, '✕')
+      ),
+      row('Email', emp.email),
+      row('Phone', emp.phone),
+      row('Department', emp.department),
+      row('Designation', emp.designation),
+      row('Salary', `$${emp.salary?.toLocaleString()}`),
+      row('Date of Joining', emp.date_of_joining),
+      React.createElement('div', { style: { display:'flex', gap:12, padding:'10px 0' } },
+        React.createElement('span', { style: { width:140, color:'var(--muted)', fontSize:12 } }, 'Performance'),
+        React.createElement('div', { style: { flex:1 } },
+          React.createElement(ScoreBar, { score: emp.performance_score })
+        )
+      ),
+      React.createElement('div', { className: 'modal-footer' },
+        React.createElement('button', { className: 'btn btn-ghost', onClick: onClose }, 'Close')
+      )
+    )
+  );
+}
+
+// ── Dashboard Page ────────────────────────────────────────────────────────────
+function Dashboard() {
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    api.get('/api/employees/dashboard')
+      .then(setStats).catch(e => setError(e.message)).finally(() => setLoading(false));
+  }, []);
+
+  if (loading) return React.createElement(Spinner);
+  if (error) return React.createElement(Alert, { msg: error });
+  if (!stats) return null;
+
+  const maxDept = Math.max(...Object.values(stats.department_distribution));
+
+  return React.createElement('div', null,
+    // KPI cards
+    React.createElement('div', { className: 'grid grid-4', style: { marginBottom: 20 } },
+      [
+        ['👥', 'Total Employees', stats.total_employees, 'Active staff'],
+        ['💰', 'Avg Salary', `$${stats.avg_salary.toLocaleString()}`, 'Per employee'],
+        ['🏢', 'Departments', Object.keys(stats.department_distribution).length, 'Active divisions'],
+        ['⭐', 'Top Performers', stats.top_performers.length, 'Score ≥ 8.0'],
+      ].map(([icon, label, val, sub]) =>
+        React.createElement('div', { className: 'card', key: label },
+          React.createElement('div', { style: { fontSize: 22, marginBottom: 8 } }, icon),
+          React.createElement('div', { className: 'card-title' }, label),
+          React.createElement('div', { className: 'card-value' }, val),
+          React.createElement('div', { className: 'card-sub' }, sub),
+        )
+      )
+    ),
+
+    React.createElement('div', { className: 'grid grid-2', style: { marginBottom: 20 } },
+      // Department Distribution
+      React.createElement('div', { className: 'card' },
+        React.createElement('h3', { style: { fontSize: 14, marginBottom: 16 } }, '📊 Department Distribution'),
+        React.createElement('div', { className: 'dept-bar' },
+          Object.entries(stats.department_distribution)
+            .sort((a,b) => b[1]-a[1])
+            .map(([dept, count]) =>
+              React.createElement('div', { className: 'dept-row', key: dept },
+                React.createElement('span', { className: 'dept-name' }, dept),
+                React.createElement('div', { className: 'dept-track' },
+                  React.createElement('div', { className: 'dept-fill', style: { width: `${(count/maxDept)*100}%` } })
+                ),
+                React.createElement('span', { className: 'dept-count' }, count)
+              )
+            )
+        )
+      ),
+
+      // Low performers
+      React.createElement('div', { className: 'card' },
+        React.createElement('h3', { style: { fontSize: 14, marginBottom: 16, color: 'var(--danger)' } }, '⚠️ Needs Attention (Score < 5)'),
+        stats.low_performers.length === 0
+          ? React.createElement('p', { style: { color: 'var(--muted)', fontSize: 13 } }, '🎉 No low performers!')
+          : stats.low_performers.slice(0, 6).map(emp =>
+            React.createElement('div', { key: emp.id, style: { display:'flex', alignItems:'center', gap:10, padding:'8px 0', borderBottom:'1px solid var(--border)' } },
+              React.createElement('div', { style: { flex: 1 } },
+                React.createElement('p', { style: { fontSize: 13, fontWeight: 500 } }, emp.full_name),
+                React.createElement('p', { style: { fontSize: 11, color: 'var(--muted)' } }, emp.designation)
+              ),
+              React.createElement(ScoreBar, { score: emp.performance_score })
+            )
+          )
+      )
+    ),
+
+    // Top performers
+    React.createElement('div', { className: 'card' },
+      React.createElement('h3', { style: { fontSize: 14, marginBottom: 16 } }, '🏆 Top 5 Performers'),
+      React.createElement('div', { className: 'table-wrap' },
+        React.createElement('table', null,
+          React.createElement('thead', null,
+            React.createElement('tr', null,
+              ['Rank','Employee','Department','Designation','Score'].map(h =>
+                React.createElement('th', { key: h }, h)
+              )
+            )
+          ),
+          React.createElement('tbody', null,
+            stats.top_performers.map((emp, i) =>
+              React.createElement('tr', { key: emp.id },
+                React.createElement('td', null, React.createElement('span', { style:{ fontFamily:'DM Mono', fontWeight:700, color: i===0?'#ffb347':i===1?'#aaa':i===2?'#cd7f32':'var(--muted)' } }, `#${i+1}`)),
+                React.createElement('td', null,
+                  React.createElement('div', null,
+                    React.createElement('p', { style:{ fontWeight:500 } }, emp.full_name),
+                    React.createElement('p', { style:{ fontSize:11, color:'var(--muted)', fontFamily:'DM Mono' } }, emp.employee_id)
+                  )
+                ),
+                React.createElement('td', null, React.createElement(DeptBadge, { dept: emp.department })),
+                React.createElement('td', { style:{ color:'var(--muted)' } }, emp.designation),
+                React.createElement('td', null, React.createElement(ScoreBar, { score: emp.performance_score })),
+              )
+            )
+          )
+        )
+      )
+    )
+  );
+}
+
+// ── Employees Page ────────────────────────────────────────────────────────────
+function EmployeesPage() {
+  const { user } = useContext(AuthCtx);
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState('');
+  const [dept, setDept] = useState('');
+  const [modal, setModal] = useState(null); // null | 'add' | {emp} | {view:emp}
+
+  const canCreate = ['admin','hr'].includes(user?.role);
+  const canDelete = user?.role === 'admin';
+
+  const load = useCallback(() => {
+    setLoading(true);
+    const params = new URLSearchParams({ page, per_page: 10 });
+    if (search) params.set('search', search);
+    if (dept) params.set('department', dept);
+    api.get(`/api/employees?${params}`)
+      .then(setData).catch(e => setError(e.message)).finally(() => setLoading(false));
+  }, [page, search, dept]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const handleSearch = (v) => { setSearch(v); setPage(1); };
+  const handleDept = (v) => { setDept(v); setPage(1); };
+
+  const doDelete = async (emp) => {
+    if (!confirm(`Delete ${emp.full_name}? This cannot be undone.`)) return;
+    try { await api.delete(`/api/employees/${emp.id}`); load(); }
+    catch (e) { alert(e.message); }
+  };
+
+  const onSaved = () => { setModal(null); load(); };
+
+  return React.createElement('div', null,
+    React.createElement('div', { className: 'toolbar' },
+      React.createElement('div', { className: 'search-wrap' },
+        React.createElement('span', { className: 'search-icon' }, '🔍'),
+        React.createElement('input', {
+          type: 'text', placeholder: 'Search by name, department, designation...',
+          value: search, onChange: e => handleSearch(e.target.value)
+        })
+      ),
+      React.createElement('select', {
+        value: dept, onChange: e => handleDept(e.target.value),
+        style: { width: 160 }
+      },
+        React.createElement('option', { value: '' }, 'All Departments'),
+        DEPARTMENTS.map(d => React.createElement('option', { key: d, value: d }, d))
+      ),
+      canCreate && React.createElement('button', { className: 'btn btn-primary', onClick: () => setModal('add') },
+        '+ Add Employee'
+      )
+    ),
+
+    error && React.createElement(Alert, { msg: error }),
+
+    loading ? React.createElement(Spinner) :
+    !data?.employees?.length ? React.createElement('div', { className: 'empty-state' },
+      React.createElement('div', { className: 'icon' }, '👤'),
+      React.createElement('p', null, 'No employees found. Try adjusting your filters.')
+    ) :
+    React.createElement('div', { className: 'table-wrap' },
+      React.createElement('table', null,
+        React.createElement('thead', null,
+          React.createElement('tr', null,
+            ['ID','Name','Department','Designation','Salary','Score','Joined','Actions'].map(h =>
+              React.createElement('th', { key: h }, h)
+            )
+          )
+        ),
+        React.createElement('tbody', null,
+          data.employees.map(emp =>
+            React.createElement('tr', { key: emp.id },
+              React.createElement('td', null, React.createElement('span', { className: 'mono', style:{ fontSize:11, color:'var(--muted)' } }, emp.employee_id)),
+              React.createElement('td', null,
+                React.createElement('div', null,
+                  React.createElement('p', { style:{ fontWeight:500 } }, emp.full_name),
+                  React.createElement('p', { style:{ fontSize:11, color:'var(--muted)' } }, emp.email)
+                )
+              ),
+              React.createElement('td', null, React.createElement(DeptBadge, { dept: emp.department })),
+              React.createElement('td', { style:{ color:'var(--muted)' } }, emp.designation),
+              React.createElement('td', { style:{ fontFamily:'DM Mono', fontSize:13 } }, `$${emp.salary?.toLocaleString()}`),
+              React.createElement('td', { style:{ minWidth: 120 } }, React.createElement(ScoreBar, { score: emp.performance_score })),
+              React.createElement('td', { style:{ color:'var(--muted)', fontSize:12 } }, emp.date_of_joining),
+              React.createElement('td', null,
+                React.createElement('div', { style:{ display:'flex', gap:4 } },
+                  React.createElement('button', { className:'btn btn-ghost btn-sm', onClick:()=>setModal({view:emp}) }, '👁'),
+                  React.createElement('button', { className:'btn btn-ghost btn-sm', onClick:()=>setModal({emp}) }, '✏️'),
+                  canDelete && React.createElement('button', { className:'btn btn-danger btn-sm', onClick:()=>doDelete(emp) }, '🗑'),
+                )
+              )
+            )
+          )
+        )
+      )
+    ),
+
+    // Pagination
+    data && data.total_pages > 1 && React.createElement('div', { className: 'pagination' },
+      React.createElement('button', { className:'page-btn', disabled:page<=1, onClick:()=>setPage(p=>p-1) }, '‹'),
+      Array.from({length:data.total_pages},(_, i)=>i+1).map(p =>
+        React.createElement('button', { key:p, className:`page-btn ${p===page?'active':''}`, onClick:()=>setPage(p) }, p)
+      ),
+      React.createElement('button', { className:'page-btn', disabled:page>=data.total_pages, onClick:()=>setPage(p=>p+1) }, '›'),
+      React.createElement('span', { style:{ color:'var(--muted)', fontSize:12, marginLeft:4 } }, `${data.total} total`)
+    ),
+
+    // Modals
+    modal === 'add' && React.createElement(EmployeeModal, { onClose:()=>setModal(null), onSaved }),
+    modal?.emp && React.createElement(EmployeeModal, { employee:modal.emp, onClose:()=>setModal(null), onSaved }),
+    modal?.view && React.createElement(EmployeeDetail, { emp:modal.view, onClose:()=>setModal(null) }),
+  );
+}
+
+// ── Sidebar ───────────────────────────────────────────────────────────────────
+function Sidebar({ page, setPage }) {
+  const { user, logout } = useContext(AuthCtx);
+  const nav = [
+    { id: 'dashboard', icon: '📊', label: 'Dashboard' },
+    { id: 'employees', icon: '👥', label: 'Employees' },
+  ];
+  return React.createElement('aside', { className: 'sidebar' },
+    React.createElement('div', { className: 'sidebar-logo' },
+      React.createElement('h1', null, 'EM', React.createElement('span', null, 'S')),
+      React.createElement('p', null, 'Management Portal')
+    ),
+    nav.map(n =>
+      React.createElement('div', {
+        key: n.id, className: `nav-item ${page === n.id ? 'active' : ''}`,
+        onClick: () => setPage(n.id)
+      },
+        React.createElement('span', { className: 'nav-icon' }, n.icon),
+        n.label
+      )
+    ),
+    React.createElement('div', { className: 'sidebar-footer' },
+      React.createElement('div', { className: 'user-badge' },
+        React.createElement('div', { className: 'avatar' }, user?.full_name?.[0] || 'U'),
+        React.createElement('div', { className: 'user-info' },
+          React.createElement('p', null, user?.full_name?.split(' ')[0]),
+          React.createElement('span', null, user?.role)
+        )
+      ),
+      React.createElement('button', { className: 'logout-btn', onClick: logout }, '→ Sign Out')
+    )
+  );
+}
+
+// ── Main App ──────────────────────────────────────────────────────────────────
+function App() {
+  const { user } = useContext(AuthCtx);
+  const [page, setPage] = useState('dashboard');
+
+  if (!user) return React.createElement(LoginPage);
+
+  const pages = {
+    dashboard: { title: 'Dashboard', subtitle: 'Overview & Analytics', comp: Dashboard },
+    employees: { title: 'Employees', subtitle: 'Manage staff records', comp: EmployeesPage },
+  };
+  const current = pages[page];
+
+  return React.createElement('div', { className: 'app' },
+    React.createElement(Sidebar, { page, setPage }),
+    React.createElement('div', { className: 'main' },
+      React.createElement('div', { className: 'topbar' },
+        React.createElement('div', null,
+          React.createElement('div', { className: 'topbar-breadcrumb' }, 'EMS Portal'),
+          React.createElement('div', { className: 'topbar-title' }, current.title),
+        ),
+        React.createElement('div', { className: 'topbar-actions' },
+          React.createElement('span', { style:{ fontSize:12, color:'var(--muted)' } }, current.subtitle),
+          React.createElement(RoleBadge, { role: user.role })
+        )
+      ),
+      React.createElement('div', { className: 'page' },
+        React.createElement(current.comp)
+      )
+    )
+  );
+}
+
+// ── Mount ─────────────────────────────────────────────────────────────────────
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(
+  React.createElement(AuthProvider, null,
+    React.createElement(App)
+  )
+);
+</script>
+</body>
+</html>
