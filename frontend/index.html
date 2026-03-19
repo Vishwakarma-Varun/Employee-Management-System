@@ -783,12 +783,174 @@ function EmployeesPage() {
     modal?.view && React.createElement(EmployeeDetail, { emp:modal.view, onClose:()=>setModal(null) }),
   );
 }
+// ── Tasks Page ────────────────────────────────────────────────────────────────
+function TasksPage() {
+  const { user } = useContext(AuthCtx);
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState('');
+  const [status, setStatus] = useState('');
+  const [modal, setModal] = useState(null);
+  const [employees, setEmployees] = useState([]);
+
+  const isEmployeeRole = user?.role === 'employee';
+  const canDelete = user?.role === 'admin';
+
+  const load = useCallback(() => {
+    setLoading(true);
+    const params = new URLSearchParams({ page, per_page: 10 });
+    if (search) params.set('search', search);
+    if (status) params.set('status', status);
+    if (isEmployeeRole) params.set('employee_id', user.id);
+    api.get(`/api/tasks?${params}`)
+      .then(setData).catch(e => setError(e.message)).finally(() => setLoading(false));
+  }, [page, search, status, isEmployeeRole, user]);
+
+  useEffect(() => { load(); }, [load]);
+  
+  useEffect(() => {
+    if (!isEmployeeRole) {
+      api.get('/api/employees?per_page=100').then(res => setEmployees(res.employees)).catch(console.error);
+    } else {
+      setEmployees([user]);
+    }
+  }, [isEmployeeRole, user]);
+
+  const doDelete = async (task) => {
+    if (!confirm(`Delete task "${task.title}"?`)) return;
+    try { await api.delete(`/api/tasks/${task.id}`); load(); }
+    catch (e) { alert(e.message); }
+  };
+
+  const onSaved = () => { setModal(null); load(); };
+
+  return React.createElement('div', null,
+    React.createElement('div', { className: 'toolbar' },
+      React.createElement('div', { className: 'search-wrap' },
+        React.createElement('span', { className: 'search-icon' }, '🔍'),
+        React.createElement('input', {
+          type: 'text', placeholder: 'Search tasks...',
+          value: search, onChange: e => { setSearch(e.target.value); setPage(1); }
+        })
+      ),
+      React.createElement('select', { value: status, onChange: e => { setStatus(e.target.value); setPage(1); }, style: { width: 140 } },
+        React.createElement('option', { value: '' }, 'All Statuses'),
+        ['Pending', 'In Progress', 'Completed'].map(s => React.createElement('option', { key: s, value: s }, s))
+      ),
+      React.createElement('button', { className: 'btn btn-primary', onClick: () => setModal('add') }, '+ Add Task')
+    ),
+    error && React.createElement(Alert, { msg: error }),
+    loading ? React.createElement(Spinner) :
+    !data?.tasks?.length ? React.createElement('div', { className: 'empty-state' }, React.createElement('div', { className: 'icon' }, '📝'), React.createElement('p', null, 'No tasks found.')) :
+    React.createElement('div', { className: 'table-wrap' },
+      React.createElement('table', null,
+        React.createElement('thead', null, React.createElement('tr', null, ['ID','Title','Status','Assignee ID','Due Date','Actions'].map(h => React.createElement('th', { key: h }, h)))),
+        React.createElement('tbody', null, data.tasks.map(t =>
+          React.createElement('tr', { key: t.id },
+            React.createElement('td', null, React.createElement('span', { className: 'mono', style: { fontSize: 11, color: 'var(--muted)' } }, `#T${t.id}`)),
+            React.createElement('td', null, React.createElement('div', null, React.createElement('p', { style: { fontWeight: 500 } }, t.title), React.createElement('p', { style:{ fontSize: 11, color:'var(--muted)' }}, t.description || ''))),
+            React.createElement('td', null, React.createElement('span', { className: `badge ${t.status === 'Completed' ? 'badge-green' : t.status === 'In Progress' ? 'badge-blue' : 'badge-yellow'}` }, t.status)),
+            React.createElement('td', null, t.employee_id),
+            React.createElement('td', { style: { color: 'var(--muted)', fontSize: 12 } }, t.due_date || '—'),
+            React.createElement('td', null, React.createElement('div', { style: { display: 'flex', gap: 4 } },
+              React.createElement('button', { className: 'btn btn-ghost btn-sm', onClick: () => setModal({ task: t }) }, '✏️'),
+              canDelete && React.createElement('button', { className: 'btn btn-danger btn-sm', onClick: () => doDelete(t) }, '🗑')
+            ))
+          )
+        ))
+      )
+    ),
+    data && data.total_pages > 1 && React.createElement('div', { className: 'pagination' },
+      React.createElement('button', { className: 'page-btn', disabled: page <= 1, onClick: () => setPage(p => p - 1) }, '‹'),
+      Array.from({ length: data.total_pages }, (_, i) => i + 1).map(p => React.createElement('button', { key: p, className: `page-btn ${p === page ? 'active' : ''}`, onClick: () => setPage(p) }, p)),
+      React.createElement('button', { className: 'page-btn', disabled: page >= data.total_pages, onClick: () => setPage(p => p + 1) }, '›'),
+      React.createElement('span', { style: { color: 'var(--muted)', fontSize: 12, marginLeft: 4 } }, `${data.total} total`)
+    ),
+    (modal === 'add' || modal?.task) && React.createElement(TaskModal, { task: modal?.task, employees, onClose: () => setModal(null), onSaved })
+  );
+}
+
+function TaskModal({ task, employees, onClose, onSaved }) {
+  const isEdit = !!task;
+  const { user } = useContext(AuthCtx);
+  const isEmployeeRole = user?.role === 'employee';
+  
+  const [form, setForm] = useState({
+    title: task?.title || '',
+    description: task?.description || '',
+    status: task?.status || 'Pending',
+    employee_id: task?.employee_id || (isEmployeeRole ? user.id : ''),
+    due_date: task?.due_date || '',
+  });
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
+
+  const submit = async (e) => {
+    e.preventDefault();
+    setLoading(true); setError('');
+    try {
+      const body = { ...form, employee_id: parseInt(form.employee_id) };
+      if (!body.due_date) delete body.due_date;
+      if (isEdit) await api.put(`/api/tasks/${task.id}`, body);
+      else await api.post('/api/tasks', body);
+      onSaved();
+    } catch (err) { setError(err.message); }
+    finally { setLoading(false); }
+  };
+
+  const F = (label, key, type = 'text', extra = {}) =>
+    React.createElement('div', { className: 'input-group' },
+      React.createElement('label', null, label),
+      React.createElement('input', { type, required: true, value: form[key], onChange: e => set(key, e.target.value), ...extra })
+    );
+
+  return React.createElement('div', { className: 'modal-overlay', onClick: e => e.target === e.currentTarget && onClose() },
+    React.createElement('div', { className: 'modal' },
+      React.createElement('div', { className: 'modal-header' }, React.createElement('h2', null, isEdit ? '✏️ Edit Task' : '➕ Add Task'), React.createElement('button', { className: 'modal-close', onClick: onClose }, '✕')),
+      React.createElement(Alert, { msg: error }),
+      React.createElement('form', { onSubmit: submit },
+        React.createElement('div', { className: 'form-stack' },
+          F('Title', 'title', 'text', { placeholder: 'Task title' }),
+          React.createElement('div', { className: 'input-group' },
+            React.createElement('label', null, 'Description'),
+            React.createElement('textarea', { value: form.description, onChange: e => set('description', e.target.value), rows: 3 })
+          ),
+          React.createElement('div', { className: 'form-grid' },
+            React.createElement('div', { className: 'input-group' },
+              React.createElement('label', null, 'Status'),
+              React.createElement('select', { value: form.status, onChange: e => set('status', e.target.value) },
+                ['Pending', 'In Progress', 'Completed'].map(s => React.createElement('option', { key: s, value: s }, s))
+              )
+            ),
+            React.createElement('div', { className: 'input-group' },
+              React.createElement('label', null, 'Assignee'),
+              React.createElement('select', { value: form.employee_id, onChange: e => set('employee_id', e.target.value), required: true, disabled: isEmployeeRole },
+                React.createElement('option', { value: '' }, 'Select employee'),
+                employees.map(e => React.createElement('option', { key: e.id, value: e.id }, e.full_name))
+              )
+            ),
+            F('Due Date', 'due_date', 'date', { required: false })
+          )
+        ),
+        React.createElement('div', { className: 'modal-footer' },
+          React.createElement('button', { type: 'button', className: 'btn btn-ghost', onClick: onClose }, 'Cancel'),
+          React.createElement('button', { type: 'submit', className: 'btn btn-primary', disabled: loading }, loading ? '⏳ Saving...' : '✓ Save')
+        )
+      )
+    )
+  );
+}
 
 // ── Sidebar ───────────────────────────────────────────────────────────────────
 function Sidebar({ page, setPage }) {
   const { user, logout } = useContext(AuthCtx);
   const nav = [
     { id: 'dashboard', icon: '📊', label: 'Dashboard' },
+    { id: 'tasks', icon: '📝', label: 'Tasks' },
     { id: 'employees', icon: '👥', label: 'Employees' },
   ];
   return React.createElement('aside', { className: 'sidebar' },
@@ -827,6 +989,7 @@ function App() {
 
   const pages = {
     dashboard: { title: 'Dashboard', subtitle: 'Overview & Analytics', comp: Dashboard },
+    tasks: { title: 'Tasks', subtitle: 'Manage employee tasks', comp: TasksPage },
     employees: { title: 'Employees', subtitle: 'Manage staff records', comp: EmployeesPage },
   };
   const current = pages[page];
